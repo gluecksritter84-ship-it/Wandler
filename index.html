@@ -1,0 +1,1961 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PV & WP Zählerplatz- & Wandler-Rechner (VDE-AR-N 4100)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800">
+
+  <!-- KOPFBEREICH -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 shadow-md print:bg-white print:text-slate-900 print:border-b-2 print:border-slate-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div class="flex items-start sm:items-center gap-3.5">
+          <div class="p-2.5 bg-sky-500/20 border border-sky-400/30 rounded-xl text-sky-400 shrink-0 print:border-slate-800 print:text-slate-900">
+            <i data-lucide="zap" class="w-7 h-7"></i>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white print:text-slate-900">
+                PV-Vertriebs-Check: Zählerschrank & Wandler
+              </h1>
+              <span class="px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-full print:border-slate-400 print:text-slate-700">
+                Schnell-Check vor Ort
+              </span>
+            </div>
+            <p class="text-sm text-slate-300 mt-0.5 print:text-slate-600">
+              In 30 Sekunden prüfen: Reicht der Zählerschrank, muss auf 16 mm² umgebaut werden oder braucht es eine Wandlermessung?
+            </p>
+          </div>
+        </div>
+
+        <!-- Aktionsbuttons -->
+        <div class="flex flex-wrap items-center gap-2.5 no-print">
+          <button
+            type="button"
+            id="btnCopyTop"
+            onclick="copyReportToClipboard()"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 transition-colors"
+          >
+            <i data-lucide="copy" class="w-4 h-4 text-sky-400"></i>
+            <span id="btnCopyTopText">Protokoll kopieren</span>
+          </button>
+          <button
+            type="button"
+            onclick="window.print()"
+            class="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium bg-sky-600 hover:bg-sky-500 text-white shadow-sm transition-colors"
+          >
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>Drucken / PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Schnell-Presets -->
+      <div class="mt-5 pt-4 border-t border-slate-800 no-print">
+        <div class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+          Typische Kundenfälle (1-Klick-Start):
+        </div>
+        <div id="presetsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          <!-- Wird per JS befüllt -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- HAUPTBEREICH -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- 0. KI-ZÄHLERSCHRANK-FOTO-SCANNER (KOMPAKT FÜR VERTRIEB) -->
+    <section class="bg-white rounded-2xl shadow-sm border-2 border-sky-200/80 overflow-hidden no-print">
+      <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-sky-950 text-white px-5 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-sky-500/20 border border-sky-400/40 rounded-xl text-sky-300">
+            <i data-lucide="camera" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-sm sm:text-base font-bold">
+              Schritt 0 (Optional): Zählerschrank abfotografieren
+            </h2>
+            <p class="text-xs text-slate-300">
+              Foto hochladen → KI erkennt automatisch Zähler, SLS-Schalter (35 A / 50 A) & Nachrüstbedarf
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onclick="loadDemoCabinetPhoto()"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-sky-200 border border-white/15 transition self-start sm:self-auto"
+        >
+          <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+          <span>Beispiel-Foto testen</span>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-5">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          <!-- Upload-Zone & Vorschau -->
+          <div class="lg:col-span-5 space-y-3">
+            <div
+              id="photoDropzone"
+              ondragover="handleDragOver(event)"
+              ondragleave="handleDragLeave(event)"
+              ondrop="handleDropPhoto(event)"
+              class="border-2 border-dashed border-slate-300 bg-slate-50/80 hover:border-sky-400 hover:bg-slate-50 rounded-2xl p-5 text-center transition"
+            >
+              <div class="text-sm font-bold text-slate-800">
+                Schranktür öffnen & Foto aufnehmen / hochladen
+              </div>
+              <p class="text-xs text-slate-500 mt-1">
+                Zähler & die unteren Sicherungen (SLS-Schalter) sollten sichtbar sein.
+              </p>
+
+              <div class="mt-3 flex flex-wrap items-center justify-center gap-2">
+                <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer shadow-sm transition">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>Foto auswählen</span>
+                  <input type="file" accept="image/*" onchange="handleFileInput(event)" class="hidden" />
+                </label>
+
+                <label class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold cursor-pointer transition sm:hidden">
+                  <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                  <span>Kamera</span>
+                  <input type="file" accept="image/*" capture="environment" onchange="handleFileInput(event)" class="hidden" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Bildvorschau & Analyse-Button -->
+            <div id="photoPreviewBox" class="hidden space-y-3">
+              <div class="relative rounded-xl overflow-hidden border border-slate-300 bg-slate-900 aspect-video flex items-center justify-center">
+                <img id="cabinetPreviewImg" src="" alt="Zählerschrank Vorschau" class="w-full h-full object-contain" />
+                <label class="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900/85 hover:bg-slate-900 text-white text-xs font-medium cursor-pointer border border-white/20">
+                  <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                  <span>Neues Foto</span>
+                  <input type="file" accept="image/*" onchange="handleFileInput(event)" class="hidden" />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                id="btnAnalyzePhoto"
+                onclick="analyzeCabinetPhotoWithGemini()"
+                class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:bg-slate-400 text-white text-sm font-bold shadow-sm transition"
+              >
+                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                <span id="btnAnalyzePhotoText">Foto jetzt auswerten</span>
+              </button>
+            </div>
+
+            <div id="photoErrorBox" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0 mt-0.5"></i>
+              <span id="photoErrorText"></span>
+            </div>
+          </div>
+
+          <!-- KI-Ergebnis-Checkliste -->
+          <div class="lg:col-span-7">
+            <div id="scanPlaceholderBox" class="rounded-2xl bg-slate-50 border border-slate-200/90 p-4 text-xs text-slate-600 space-y-1.5">
+              <div class="font-bold text-slate-800 text-sm">Tipp für das Kundengespräch:</div>
+              <p>Wenn Sie ein Foto vom Zählerschrank machen, erkennt das Tool automatisch, ob ein <strong>35 A SLS (10 mm²)</strong> oder schon ein <strong>50 A SLS (16 mm²)</strong> verbaut ist und ob ein <strong>Überspannungsschutz</strong> fehlt.</p>
+            </div>
+
+            <div id="scanResultBox" class="hidden rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Foto-Check Ergebnis</h3>
+                  <p id="scanConstructionText" class="text-xs text-slate-500"></p>
+                </div>
+
+                <button
+                  type="button"
+                  onclick="applyCabinetScanToCalculator()"
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition shrink-0"
+                >
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                  <span>In Check übernehmen</span>
+                </button>
+              </div>
+
+              <div id="scanAppliedBanner" class="hidden p-2 rounded-xl bg-emerald-100 border border-emerald-300 text-xs text-emerald-900 font-semibold">
+                ✓ Werte aus dem Foto wurden unten übernommen!
+              </div>
+
+              <div id="scanBadgesGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs"></div>
+              <div id="scanComponentsList" class="hidden"></div>
+              <div id="scanFindingsBox" class="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1 text-xs text-amber-950"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HAUPT-GRID: LINKE SPALTE (EINFACHE VERTRIEBS-ABFRAGE) & RECHTE SPALTE (KLARE ANTWORT) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LINKE SPALTE: 3 SIMPLE SCHRITTE -->
+      <div class="lg:col-span-6 space-y-5">
+
+        <!-- SCHRITT 1: GEBÄUDE, ZÄHLER & ZUSAMMENLEGUNG -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-800 text-white px-5 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-extrabold flex items-center justify-center">1</span>
+              <h2 class="text-sm sm:text-base font-bold">Gebäude, Zähler & Zählerzusammenlegung</h2>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <!-- Kundenname & Schrankzustand -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Kundenname (für Angebot)</label>
+                <input
+                  type="text"
+                  id="projectName"
+                  oninput="state.projectName = this.value; updateAll()"
+                  placeholder="z. B. Familie Weber"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-sky-500 text-sm font-medium outline-none"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Zählerschrank-Zustand (SLS)</label>
+                <select
+                  id="existingWiring"
+                  onchange="state.existingWiring = this.value; state.activePreset = 'custom'; updateAll()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-sky-500 text-sm font-semibold outline-none"
+                >
+                  <option value="10mm2">Älterer Schrank (10 mm² / 35 A SLS)</option>
+                  <option value="16mm2">Moderner Schrank (16 mm² / 50 A SLS)</option>
+                  <option value="unknown">Neuer Zählerschrank geplant</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Wohneinheiten & Zähler ganz einfach per +/- -->
+            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="text-xs font-bold text-slate-800">Vorhandene Zähler im Gebäude</div>
+                  <div class="text-[11px] text-slate-500">Haken setzen = Zähler wird in die Zusammenlegung einbezogen</div>
+                </div>
+                <button
+                  type="button"
+                  onclick="addSimpleMeter()"
+                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-xs transition shrink-0"
+                >
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>+ Zähler</span>
+                </button>
+              </div>
+
+              <!-- Liste der einzelnen Zähler -->
+              <div id="simpleMetersList" class="space-y-2">
+                <!-- Wird per JS befüllt -->
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200/80">
+                <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="hasWpMeter"
+                    onchange="state.hasWpMeter = this.checked; state.activePreset = 'custom'; updateAll()"
+                    class="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  <span>Separater Wärmepumpen-Zähler (zusammenlegen)</span>
+                </label>
+
+                <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="hasOldPvFullFeedMeter"
+                    onchange="state.hasOldPvFullFeedMeter = this.checked; state.activePreset = 'custom'; updateAll()"
+                    class="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  <span>Alt-PV Volleinspeisezähler (zusammenlegen)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Was soll mit den Zählern passieren? -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-2">
+                Was soll gemacht werden? (Zählerkonzept)
+              </label>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  id="btnConceptMerge"
+                  onclick="setTargetConcept('merge_all')"
+                  class="p-2.5 rounded-xl border text-left transition"
+                >
+                  <div class="text-xs font-bold text-slate-900">Alles auf 1 Zähler</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Zähler zusammenlegen (spart Grundgebühr)</div>
+                </button>
+
+                <button
+                  type="button"
+                  id="btnConceptCascade"
+                  onclick="setTargetConcept('cascade')"
+                  class="p-2.5 rounded-xl border text-left transition"
+                >
+                  <div class="text-xs font-bold text-slate-900">Kaskade (WP-Tarif)</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">WP-Stromtarif behalten + PV nutzen</div>
+                </button>
+
+                <button
+                  type="button"
+                  id="btnConceptSeparate"
+                  onclick="setTargetConcept('separate')"
+                  class="p-2.5 rounded-xl border text-left transition"
+                >
+                  <div class="text-xs font-bold text-slate-900">Zähler getrennt lassen</div>
+                  <div class="text-[11px] text-slate-500 mt-0.5">Keine Zusammenlegung der Zähler</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCHRITT 2: PV-ANLAGE & SPEICHER -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-amber-500 text-white px-5 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-amber-600 text-xs font-extrabold flex items-center justify-center">2</span>
+              <h2 class="text-sm sm:text-base font-bold">Geplante PV-Anlage & Speicher</h2>
+            </div>
+            <span id="badgeFeedInAmps" class="text-xs font-extrabold bg-amber-600/80 px-2.5 py-0.5 rounded-full">0,0 A</span>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">PV-Anlagengröße (kWp)</label>
+                <div class="relative">
+                  <input
+                    type="number"
+                    id="pvKwp"
+                    step="0.5"
+                    min="0"
+                    oninput="handleSimplePvChange(this.value)"
+                    class="w-full pr-12 pl-3.5 py-2.5 rounded-xl border border-slate-300 text-base font-bold text-slate-900 outline-none focus:border-amber-500"
+                  />
+                  <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">kWp</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Wechselrichter-Leistung (kVA)</label>
+                <div class="relative">
+                  <input
+                    type="number"
+                    id="pvInverterKva"
+                    step="0.5"
+                    min="0"
+                    oninput="state.pvInverterKva = parseFloat(this.value) || 0; state.activePreset = 'custom'; updateAll()"
+                    class="w-full pr-12 pl-3.5 py-2.5 rounded-xl border-2 border-amber-300 bg-amber-50/40 text-base font-bold text-slate-900 outline-none focus:border-amber-500"
+                  />
+                  <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-700">kVA</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Schnell-Buttons für typische PV-Größen -->
+            <div class="flex flex-wrap items-center gap-1.5">
+              <span class="text-[11px] font-semibold text-slate-500 mr-1">Schnellwahl PV:</span>
+              <button type="button" onclick="setQuickPv(10, 10)" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold">10 kWp</button>
+              <button type="button" onclick="setQuickPv(15, 15)" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold">15 kWp</button>
+              <button type="button" onclick="setQuickPv(22, 20)" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold">22 kWp (20 kVA)</button>
+              <button type="button" onclick="setQuickPv(30, 30)" class="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-xs font-semibold">30 kWp (Limit!)</button>
+            </div>
+
+            <div class="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+              <label class="flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-800">
+                <input
+                  type="checkbox"
+                  id="hemsEnabled"
+                  onchange="state.hemsEnabled = this.checked; state.wallboxDynamicLm = this.checked; state.activePreset = 'custom'; updateAll()"
+                  class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span>
+                  Energiemanagement (HEMS / Smart-Meter) wird mitverkauft (regelt Wallbox bei Spitzenlast ab)
+                </span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCHRITT 3: WÄRMEPUMPE, WALLBOX & GROßVERBRAUCHER -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-sky-600 text-white px-5 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-sky-600 text-xs font-extrabold flex items-center justify-center">3</span>
+              <h2 class="text-sm sm:text-base font-bold">Wärmepumpe, Wallbox & Haus-Verbraucher</h2>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <!-- Wärmepumpe Simple Auswahl -->
+            <div class="p-3.5 rounded-xl bg-orange-50/60 border border-orange-200 space-y-2.5">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="flex items-center gap-2 font-bold text-sm text-slate-900">
+                  <i data-lucide="flame" class="w-4 h-4 text-orange-600"></i>
+                  <span>Wärmepumpe (elektr. Aufnahmeleistung)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <select
+                    id="simpleWpPreset"
+                    onchange="applySimpleWpPreset(this.value)"
+                    class="px-2.5 py-1.5 rounded-lg border border-orange-300 bg-white text-xs font-semibold text-slate-800 outline-none"
+                  >
+                    <option value="none">Keine WP</option>
+                    <option value="small">EFH (~3,6 kW)</option>
+                    <option value="medium">Groß (~5,0 kW)</option>
+                    <option value="large">MFH (~8,5 kW)</option>
+                    <option value="custom">Eigener Wert</option>
+                  </select>
+                  <div class="relative w-24 shrink-0">
+                    <input
+                      type="number"
+                      id="wpCompressorKwMain"
+                      step="0.1"
+                      min="0"
+                      oninput="handleMainWpKwChange(this.value)"
+                      class="w-full pr-8 pl-2.5 py-1.5 rounded-lg border border-orange-300 bg-white text-xs font-extrabold text-slate-900 outline-none focus:border-orange-500"
+                    />
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-orange-700">kW</span>
+                  </div>
+                </div>
+              </div>
+              <div id="wpHeaterLockRow" class="pt-1 space-y-1.5">
+                <div class="flex items-center justify-between text-xs text-slate-700">
+                  <span>Zusatz-Heizstab (kW):</span>
+                  <div class="relative w-24">
+                    <input
+                      type="number"
+                      id="wpBackupHeaterKwMain"
+                      step="0.5"
+                      min="0"
+                      oninput="handleMainWpHeaterChange(this.value)"
+                      class="w-full pr-8 pl-2.5 py-1 rounded-lg border border-orange-200 bg-white text-xs font-bold text-slate-900 outline-none"
+                    />
+                    <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">kW</span>
+                  </div>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="wpHeaterLocked"
+                    onchange="state.wpHeaterLocked = this.checked; state.activePreset = 'custom'; updateAll()"
+                    class="rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                  />
+                  <span>Heizstab ist verriegelt (läuft nicht gleichzeitig auf Volllast – Standard)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Wallbox Simple Auswahl -->
+            <div class="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-200 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 font-bold text-sm text-slate-900">
+                  <i data-lucide="car" class="w-4 h-4 text-indigo-600"></i>
+                  <span>Wallbox(en) vorhanden / geplant?</span>
+                </div>
+                <select
+                  id="simpleWbPreset"
+                  onchange="applySimpleWbPreset(this.value)"
+                  class="px-3 py-1.5 rounded-lg border border-indigo-300 bg-white text-xs font-bold text-slate-900 outline-none"
+                >
+                  <option value="0">Keine Wallbox</option>
+                  <option value="1_11">1× Wallbox (11 kW)</option>
+                  <option value="2_11">2× Wallbox (je 11 kW)</option>
+                  <option value="1_22">1× Wallbox (22 kW)</option>
+                  <option value="3_11">3× Wallbox (je 11 kW)</option>
+                </select>
+              </div>
+              <div id="wb14aRow" class="pt-1">
+                <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="wallboxDimming14a"
+                    onchange="state.wallboxDimming14a = this.checked; state.activePreset = 'custom'; updateAll()"
+                    class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>§ 14a EnWG Steuerung aktiv (Netzbetreiber darf auf 4,2 kW dimmen – Pflicht ab 2024!)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Typische Haushalts-Besonderheiten als einfache Checkboxen -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-slate-700">
+                Besondere Großverbraucher im Haushalt (ankreuzen falls vorhanden):
+              </label>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="chkDle"
+                    onchange="toggleSimpleExtraLoad('dle', this.checked)"
+                    class="rounded border-slate-300 text-sky-600"
+                  />
+                  <span>Durchlauferhitzer (Warmwasser)</span>
+                </label>
+
+                <label class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="chkSauna"
+                    onchange="toggleSimpleExtraLoad('sauna', this.checked)"
+                    class="rounded border-slate-300 text-sky-600"
+                  />
+                  <span>Sauna / Poolheizung (Dauerlast)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Experten-Feintuning aufklappbar -->
+            <details class="pt-2 border-t border-slate-100 text-xs">
+              <summary class="cursor-pointer font-semibold text-slate-500 hover:text-slate-800 select-none">
+                ▸ Experten-Feintuning (Zählerpark, Einzelverbraucher, cos φ)
+              </summary>
+              <div class="mt-3 space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">WP Verdichter (kW)</label>
+                    <input type="number" id="wpCompressorKw" step="0.1" min="0" oninput="state.wpCompressorKw = parseFloat(this.value) || 0; updateAll()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-slate-600 mb-1">WP Heizstab (kW)</label>
+                    <input type="number" id="wpBackupHeaterKw" step="0.5" min="0" oninput="state.wpBackupHeaterKw = parseFloat(this.value) || 0; updateAll()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold" />
+                  </div>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-semibold text-slate-600">Ersparnis je entfallendem Zähler (€/Jahr):</span>
+                  <input type="number" id="annualMeterFeeSaved" step="5" min="0" oninput="state.annualMeterFeeSaved = parseFloat(this.value) || 0; updateAll()" class="w-24 px-2 py-1 rounded-lg border border-slate-300 bg-white font-bold text-right" />
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+      </div>
+
+      <!-- RECHTE SPALTE: VERTRIEBS-ERGEBNIS & VERKAUFSARGUMENTE -->
+      <div class="lg:col-span-6 space-y-5 lg:sticky lg:top-6">
+
+        <!-- 1. KLARE VERTRIEBS-AMPEL -->
+        <section id="resultTrafficLightCard" class="rounded-2xl shadow-md border-2 p-6 transition-all bg-emerald-50/95 border-emerald-500 text-emerald-950">
+          <div class="flex items-start gap-4">
+            <div id="resultIconBox" class="p-3.5 rounded-2xl shrink-0 text-white shadow-sm bg-emerald-600">
+              <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+              <span id="resultStatusBadge" class="text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-200/80 text-emerald-900">
+                Kein Wandler nötig
+              </span>
+
+              <h2 id="resultStatusTitle" class="text-xl font-extrabold mt-2.5 leading-snug"></h2>
+              <p id="resultStatusSummary" class="text-sm mt-2 leading-relaxed opacity-95"></p>
+            </div>
+          </div>
+
+          <!-- Was heißt das konkret fürs Angebot? -->
+          <div class="mt-5 p-4 rounded-xl bg-white/95 border border-black/10 space-y-2 text-sm text-slate-800">
+            <div class="flex items-start gap-2.5">
+              <i data-lucide="wrench" class="w-5 h-5 text-slate-700 shrink-0 mt-0.5"></i>
+              <div>
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Was ins Angebot muss:</div>
+                <div id="resultWiringAction" class="font-bold text-slate-900 mt-0.5"></div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200/80 text-xs">
+              <span class="text-slate-500 font-medium">Kalkulations-Richtwert Zählerplatz:</span>
+              <strong id="resultUpgradeCost" class="text-sm font-extrabold text-slate-900"></strong>
+            </div>
+          </div>
+
+          <!-- Kompakte Ampel-Werte -->
+          <div class="grid grid-cols-3 gap-2.5 mt-4">
+            <div class="bg-white/85 rounded-xl p-2.5 text-center border border-black/5">
+              <div class="text-[10px] font-bold uppercase text-slate-500">PV-Einspeisung</div>
+              <div id="kpiFeedInA" class="text-base font-extrabold text-amber-700 mt-0.5">0,0 A</div>
+              <div id="kpiFeedInKva" class="text-[11px] text-slate-500">0,0 kVA</div>
+            </div>
+
+            <div class="bg-white/85 rounded-xl p-2.5 text-center border border-black/5">
+              <div class="text-[10px] font-bold uppercase text-slate-500">Haus + WP + WB</div>
+              <div id="kpiConsumptionA" class="text-base font-extrabold text-sky-700 mt-0.5">0,0 A</div>
+              <div id="kpiConsumptionKva" class="text-[11px] text-slate-500">0,0 kVA</div>
+            </div>
+
+            <div class="bg-slate-900 text-white rounded-xl p-2.5 text-center shadow-xs">
+              <div class="text-[10px] font-bold uppercase text-slate-300">Max. Wert (Limit 44 A)</div>
+              <div id="kpiMaxA" class="text-base font-extrabold text-white mt-0.5">0,0 A</div>
+              <div id="kpiDirection" class="text-[11px] text-sky-300">–</div>
+            </div>
+          </div>
+
+          <div id="intermittentWarningBox" class="hidden mt-3 p-3 rounded-xl bg-rose-100 border border-rose-300 flex items-start gap-2 text-xs text-rose-900">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-rose-700 shrink-0 mt-0.5"></i>
+            <div id="intermittentWarningText"></div>
+          </div>
+        </section>
+
+        <!-- 2. VERKAUFS-HEBEL: SO VERMEIDEN WIR WANDLER / UMBAU -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="p-1.5 bg-amber-100 text-amber-700 rounded-lg">
+              <i data-lucide="lightbulb" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Verkaufs-Argumente & Optimierungs-Hebel</h3>
+              <p class="text-xs text-slate-500">Wie Sie dem Kunden teure Umbauten ersparen (oder HEMS verkaufen)</p>
+            </div>
+          </div>
+          <div id="recommendationsList" class="space-y-2.5"></div>
+        </section>
+
+        <!-- 3. ZÄHLERZUSAMMENLEGUNG & VNB-FAUSTREGELN (KOMPAKT) -->
+        <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-900">Zählerkonzept-Vergleich (1 Klick wechseln)</h3>
+            <span id="badgeAnnualSavings" class="hidden text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800"></span>
+          </div>
+          <div id="scenarioComparisonList" class="space-y-2 text-xs"></div>
+          <div id="savingsSummaryBox" class="hidden p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900"></div>
+
+          <div class="pt-3 border-t border-slate-100">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Wichtige Netzbetreiber-Grenzen (VNB-Check):
+            </h4>
+            <div id="vnbRulesList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ÜBERGABE-PROTOKOLL AN TECHNIK / PLANUNG -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">Zusammenfassung für Technik / Angebots-Übergabe</h2>
+          <p class="text-xs text-slate-500">Kopieren und direkt ins CRM / Angebot einfügen</p>
+        </div>
+
+        <button
+          type="button"
+          id="btnCopyBottom"
+          onclick="copyReportToClipboard()"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white transition-colors no-print"
+        >
+          <i data-lucide="copy" class="w-4 h-4"></i>
+          <span id="btnCopyBottomText">Für Angebot / Technik kopieren</span>
+        </button>
+      </div>
+
+      <div id="protocolGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 text-xs"></div>
+    </section>
+  </main>
+
+  <script>
+    // =========================================================================
+    // DATENMODELLE & VEREINFACHTE VERTRIEBS-LOGIK
+    // =========================================================================
+    const SQRT3_400V = Math.sqrt(3) * 0.4; // 0.692820323 kVA / A
+
+    const PRESETS = [
+      {
+        id: 'efh-standard',
+        label: '1. EFH Standard + 15 kWp PV',
+        sub: '1 WE + WP + 1 Wallbox (11 kW)',
+        icon: 'home',
+        data: {
+          projectName: 'EFH Standard – 15 kWp PV + WP + Wallbox',
+          existingWiring: '10mm2',
+          cosPhi: 0.95,
+          meters: [{ id: 1, name: 'Zähler 1 (Haushalt)', type: 'household', units: 1, mergeSelected: true }],
+          hasWpMeter: true,
+          hasOldPvFullFeedMeter: false,
+          targetConcept: 'merge_all',
+          annualMeterFeeSaved: 95,
+          pvKwp: 15.0,
+          pvInverterKva: 15.0,
+          batteryCapacityKwh: 10.0,
+          batteryAcDischargeKva: 0,
+          batteryAcChargeKw: 0,
+          hemsEnabled: true,
+          electricWaterHeating: false,
+          householdContinuousSharePct: 25,
+          customAppliances: [],
+          wpCompressorKw: 3.6,
+          wpBackupHeaterKw: 6.0,
+          wpHeaterLocked: true,
+          wallboxCount: 1,
+          wallboxPowerKw: 11.0,
+          wallboxDimming14a: true,
+          wallboxDynamicLm: true,
+        },
+      },
+      {
+        id: 'efh-gross',
+        label: '2. Großes EFH + 25 kWp PV',
+        sub: '1 WE + WP + 2 Wallboxen + Sauna',
+        icon: 'sun',
+        data: {
+          projectName: 'Großes EFH – 25 kWp PV + WP + 2× Wallbox',
+          existingWiring: '16mm2',
+          cosPhi: 0.95,
+          meters: [{ id: 1, name: 'Zähler 1 (Haushalt)', type: 'household', units: 1, mergeSelected: true }],
+          hasWpMeter: true,
+          hasOldPvFullFeedMeter: false,
+          targetConcept: 'merge_all',
+          annualMeterFeeSaved: 105,
+          pvKwp: 25.0,
+          pvInverterKva: 25.0,
+          batteryCapacityKwh: 15.0,
+          batteryAcDischargeKva: 0,
+          batteryAcChargeKw: 0,
+          hemsEnabled: false,
+          electricWaterHeating: false,
+          householdContinuousSharePct: 25,
+          customAppliances: [
+            { id: 201, name: 'Sauna / Poolheizung', kw: 7.5, mode: 'continuous', simultaneity: 1.0 },
+          ],
+          wpCompressorKw: 5.0,
+          wpBackupHeaterKw: 6.0,
+          wpHeaterLocked: true,
+          wallboxCount: 2,
+          wallboxPowerKw: 11.0,
+          wallboxDimming14a: true,
+          wallboxDynamicLm: false,
+        },
+      },
+      {
+        id: 'zfh-2we',
+        label: '3. Zweifamilienhaus (2 WE)',
+        sub: '2 WE zusammenlegen + 20 kWp PV',
+        icon: 'git-merge',
+        data: {
+          projectName: 'Zweifamilienhaus (2 WE) – Zählerzusammenlegung + 20 kWp PV',
+          existingWiring: '16mm2',
+          cosPhi: 0.95,
+          meters: [
+            { id: 1, name: 'Zähler 1 (Wohnung EG)', type: 'household', units: 1, mergeSelected: true },
+            { id: 2, name: 'Zähler 2 (Wohnung OG)', type: 'household', units: 1, mergeSelected: true },
+          ],
+          hasWpMeter: true,
+          hasOldPvFullFeedMeter: false,
+          targetConcept: 'merge_all',
+          annualMeterFeeSaved: 105,
+          pvKwp: 20.0,
+          pvInverterKva: 20.0,
+          batteryCapacityKwh: 15.0,
+          batteryAcDischargeKva: 0,
+          batteryAcChargeKw: 0,
+          hemsEnabled: true,
+          electricWaterHeating: false,
+          householdContinuousSharePct: 25,
+          customAppliances: [],
+          wpCompressorKw: 5.0,
+          wpBackupHeaterKw: 6.0,
+          wpHeaterLocked: true,
+          wallboxCount: 1,
+          wallboxPowerKw: 11.0,
+          wallboxDimming14a: true,
+          wallboxDynamicLm: true,
+        },
+      },
+      {
+        id: 'mfh-6we',
+        label: '4. Mehrfamilienhaus (6 WE)',
+        sub: '6 WE + WP + 30 kWp PV (Wandler-Check)',
+        icon: 'building-2',
+        data: {
+          projectName: 'Mehrfamilienhaus (6 WE) – 30 kWp PV + WP',
+          existingWiring: '16mm2',
+          cosPhi: 0.95,
+          meters: [
+            { id: 1, name: 'Zähler 1 (WE 1)', type: 'household', units: 1, mergeSelected: true },
+            { id: 2, name: 'Zähler 2 (WE 2)', type: 'household', units: 1, mergeSelected: true },
+            { id: 3, name: 'Zähler 3 (WE 3)', type: 'household', units: 1, mergeSelected: true },
+            { id: 4, name: 'Zähler 4 (WE 4)', type: 'household', units: 1, mergeSelected: true },
+            { id: 5, name: 'Zähler 5 (WE 5)', type: 'household', units: 1, mergeSelected: true },
+            { id: 6, name: 'Zähler 6 (WE 6)', type: 'household', units: 1, mergeSelected: true },
+          ],
+          hasWpMeter: true,
+          hasOldPvFullFeedMeter: false,
+          targetConcept: 'merge_all',
+          annualMeterFeeSaved: 110,
+          pvKwp: 32.0,
+          pvInverterKva: 30.0,
+          batteryCapacityKwh: 20.0,
+          batteryAcDischargeKva: 0,
+          batteryAcChargeKw: 0,
+          hemsEnabled: true,
+          electricWaterHeating: false,
+          householdContinuousSharePct: 25,
+          customAppliances: [],
+          wpCompressorKw: 8.5,
+          wpBackupHeaterKw: 9.0,
+          wpHeaterLocked: true,
+          wallboxCount: 2,
+          wallboxPowerKw: 11.0,
+          wallboxDimming14a: true,
+          wallboxDynamicLm: true,
+        },
+      },
+    ];
+
+    let state = {
+      activePreset: 'efh-standard',
+      detectedSlsAmps: 'unknown',
+      ...JSON.parse(JSON.stringify(PRESETS[0].data)),
+    };
+
+    let photoState = {
+      base64: null,
+      mime: 'image/jpeg',
+      scanResult: null,
+    };
+
+    let lastCalculation = null;
+
+    // =========================================================================
+    // HILFSFUNKTIONEN
+    // =========================================================================
+    function formatNum(num, decimals = 1) {
+      if (isNaN(num) || !isFinite(num)) return '0,0';
+      return num.toLocaleString('de-DE', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+    }
+
+    function formatEuro(num) {
+      if (isNaN(num) || !isFinite(num)) return '0 €';
+      return Math.round(num).toLocaleString('de-DE') + ' €';
+    }
+
+    function calculateHouseholdDinKVA(units, hasElectricWaterHeating = false) {
+      if (units <= 0) return 0;
+      const base = hasElectricWaterHeating ? 34.0 : 14.5;
+      if (units === 1) return base;
+      const gFactor = 0.25 + 0.75 / Math.sqrt(units);
+      const perUnit = hasElectricWaterHeating ? 24.0 : 11.5;
+      return Math.round((base + (units - 1) * perUnit * gFactor) * 10) / 10;
+    }
+
+    // Einzelne Zähler verwalten & für Zusammenlegung auswählen
+    function addSimpleMeter() {
+      const nextNum = state.meters.length + 1;
+      state.meters.push({
+        id: Date.now(),
+        name: `Zähler ${nextNum} (Wohnung ${nextNum})`,
+        type: 'household',
+        units: 1,
+        mergeSelected: true,
+      });
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function updateSimpleMeter(id, field, value) {
+      state.meters = state.meters.map((m, idx) => {
+        if (m.id !== id) return m;
+        if (idx === 0 && field === 'mergeSelected') return { ...m, mergeSelected: true };
+        return { ...m, [field]: value };
+      });
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function removeSimpleMeter(id) {
+      if (state.meters.length <= 1) return;
+      state.meters = state.meters.filter((m) => m.id !== id);
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function handleMainWpKwChange(val) {
+      const kw = Math.max(0, parseFloat(val) || 0);
+      state.wpCompressorKw = kw;
+      if (kw > 0 && state.wpBackupHeaterKw === 0) {
+        state.wpBackupHeaterKw = 6.0;
+        document.getElementById('wpBackupHeaterKwMain').value = 6.0;
+      }
+      document.getElementById('wpCompressorKw').value = kw;
+      const wpSel = document.getElementById('simpleWpPreset');
+      if (kw === 0) wpSel.value = 'none';
+      else if (kw === 3.6) wpSel.value = 'small';
+      else if (kw === 5.0) wpSel.value = 'medium';
+      else if (kw === 8.5) wpSel.value = 'large';
+      else wpSel.value = 'custom';
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function handleMainWpHeaterChange(val) {
+      const kw = Math.max(0, parseFloat(val) || 0);
+      state.wpBackupHeaterKw = kw;
+      document.getElementById('wpBackupHeaterKw').value = kw;
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function handleSimplePvChange(val) {
+      const kwp = Math.max(0, parseFloat(val) || 0);
+      state.pvKwp = kwp;
+      // Setzt WR automatisch auf 90 % bis max 30 kVA (typische Vertriebspraxis)
+      const autoKva = kwp <= 15 ? kwp : Math.min(30, Math.round(kwp * 0.9 * 10) / 10);
+      state.pvInverterKva = autoKva;
+      document.getElementById('pvInverterKva').value = autoKva;
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function setQuickPv(kwp, kva) {
+      state.pvKwp = kwp;
+      state.pvInverterKva = kva;
+      document.getElementById('pvKwp').value = kwp;
+      document.getElementById('pvInverterKva').value = kva;
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function applySimpleWpPreset(val) {
+      if (val === 'custom') return;
+      if (val === 'none') {
+        state.wpCompressorKw = 0;
+        state.wpBackupHeaterKw = 0;
+      } else if (val === 'small') {
+        state.wpCompressorKw = 3.6;
+        state.wpBackupHeaterKw = 6.0;
+      } else if (val === 'medium') {
+        state.wpCompressorKw = 5.0;
+        state.wpBackupHeaterKw = 6.0;
+      } else if (val === 'large') {
+        state.wpCompressorKw = 8.5;
+        state.wpBackupHeaterKw = 9.0;
+      }
+      document.getElementById('wpCompressorKw').value = state.wpCompressorKw;
+      document.getElementById('wpBackupHeaterKw').value = state.wpBackupHeaterKw;
+      document.getElementById('wpCompressorKwMain').value = state.wpCompressorKw;
+      document.getElementById('wpBackupHeaterKwMain').value = state.wpBackupHeaterKw;
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function applySimpleWbPreset(val) {
+      if (val === '0') {
+        state.wallboxCount = 0;
+        state.wallboxPowerKw = 11.0;
+      } else {
+        const [cnt, kw] = val.split('_');
+        state.wallboxCount = parseInt(cnt, 10) || 0;
+        state.wallboxPowerKw = parseFloat(kw) || 11.0;
+      }
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function toggleSimpleExtraLoad(type, checked) {
+      if (type === 'dle') {
+        state.electricWaterHeating = checked;
+      } else if (type === 'sauna') {
+        state.customAppliances = state.customAppliances.filter((a) => a.id !== 201);
+        if (checked) {
+          state.customAppliances.push({
+            id: 201,
+            name: 'Sauna / Poolheizung',
+            kw: 7.5,
+            mode: 'continuous',
+            simultaneity: 1.0,
+          });
+        }
+      }
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    // =========================================================================
+    // KI-ZÄHLERSCHRANK-FOTO-SCANNER (GEMINI VISION API)
+    // =========================================================================
+    function handleDragOver(e) {
+      e.preventDefault();
+      document.getElementById('photoDropzone').classList.add('border-sky-500', 'bg-sky-50');
+    }
+
+    function handleDragLeave(e) {
+      document.getElementById('photoDropzone').classList.remove('border-sky-500', 'bg-sky-50');
+    }
+
+    function handleDropPhoto(e) {
+      e.preventDefault();
+      handleDragLeave(e);
+      const file = e.dataTransfer?.files?.[0];
+      if (file) processCabinetFile(file);
+    }
+
+    function handleFileInput(e) {
+      const file = e.target?.files?.[0];
+      if (file) processCabinetFile(file);
+    }
+
+    function processCabinetFile(file) {
+      if (!file.type.startsWith('image/')) {
+        showPhotoError('Bitte eine gültige Bilddatei (JPG oder PNG) auswählen.');
+        return;
+      }
+      hidePhotoError();
+      photoState.scanResult = null;
+      document.getElementById('scanResultBox').classList.add('hidden');
+      document.getElementById('scanPlaceholderBox').classList.remove('hidden');
+      document.getElementById('scanAppliedBanner').classList.add('hidden');
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result;
+        if (typeof dataUrl === 'string') {
+          document.getElementById('cabinetPreviewImg').src = dataUrl;
+          document.getElementById('photoDropzone').classList.add('hidden');
+          document.getElementById('photoPreviewBox').classList.remove('hidden');
+          const commaIdx = dataUrl.indexOf(',');
+          if (commaIdx !== -1) {
+            photoState.base64 = dataUrl.slice(commaIdx + 1);
+            photoState.mime = file.type || 'image/jpeg';
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showPhotoError(msg) {
+      document.getElementById('photoErrorText').textContent = msg;
+      document.getElementById('photoErrorBox').classList.remove('hidden');
+    }
+
+    function hidePhotoError() {
+      document.getElementById('photoErrorBox').classList.add('hidden');
+    }
+
+    function loadDemoCabinetPhoto() {
+      hidePhotoError();
+      document.getElementById('scanAppliedBanner').classList.add('hidden');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 760;
+      canvas.height = 540;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 0, 760, 540);
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 4;
+        ctx.fillRect(110, 25, 540, 490);
+        ctx.strokeRect(110, 25, 540, 490);
+
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(130, 45, 240, 340);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(150, 70, 90, 120);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(162, 85, 66, 26);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('1.8.0  04821 kWh', 165, 102);
+        ctx.fillText('Z1 HAUSHALT', 155, 206);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(260, 70, 90, 120);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(272, 85, 66, 26);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('1.8.0  11290 kWh', 275, 102);
+        ctx.fillText('Z2 WAERMEPUMPE', 255, 206);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(130, 400, 240, 95);
+        ctx.strokeRect(130, 400, 240, 95);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(155, 420, 65, 55);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(163, 442, 48, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('SLS E35A', 162, 434);
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText('NAR: 10mm² / Kein ÜSS', 232, 452);
+
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillRect(390, 45, 240, 340);
+        ctx.strokeRect(390, 45, 240, 340);
+        for (let row = 0; row < 3; row++) {
+          const y = 75 + row * 95;
+          ctx.fillStyle = '#94a3b8';
+          ctx.fillRect(405, y + 20, 210, 8);
+          for (let b = 0; b < 8; b++) {
+            ctx.fillStyle = b === 0 ? '#2563eb' : '#e2e8f0';
+            ctx.strokeStyle = '#475569';
+            ctx.fillRect(410 + b * 25, y, 22, 48);
+            ctx.strokeRect(410 + b * 25, y, 22, 48);
+          }
+        }
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(390, 400, 240, 95);
+        ctx.strokeRect(390, 400, 240, 95);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('APZ-FELD (RJ45 / 230V)', 435, 452);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        document.getElementById('cabinetPreviewImg').src = dataUrl;
+        document.getElementById('photoDropzone').classList.add('hidden');
+        document.getElementById('photoPreviewBox').classList.remove('hidden');
+        photoState.base64 = dataUrl.split(',')[1];
+        photoState.mime = 'image/jpeg';
+
+        photoState.scanResult = {
+          meterCount: 2,
+          meterMountingType: '3-Punkt (2 Zähler belegt)',
+          reserveMeterSpaces: 0,
+          estimatedWiring: '10mm2',
+          wiringConfidence: '35 A SLS erkannt',
+          slsPresent: 'vorhanden',
+          slsAmperage: '35',
+          ussPresent: 'fehlt',
+          apzPresent: 'vorhanden',
+          rfzPresent: 'unklar',
+          cabinetConstruction: '2-feldriger Zählerschrank mit 2 Zählern (Haushalt + WP) & APZ-Feld',
+          freeDinRailSpace: 'Ausreichend für Smart-Meter',
+          detectedComponents: ['Hauptzähler (Z1)', 'WP-Zähler (Z2)', 'SLS 35 A', 'APZ-Feld'],
+          hasWpMeterDetected: true,
+          hasSecondUnitDetected: false,
+          vdeFindings: [
+            'Verbaut ist ein 35 A SLS (10 mm²). Über 22 kVA / 32 A muss der Elektriker auf 16 mm² & 50 A SLS umbauen.',
+            'Überspannungsschutz (ÜSS) fehlt unten im Schrank → muss bei PV-Installation mit angeboten werden!',
+            'APZ-Feld für Smart-Meter / Steuerbox ist bereits vorhanden.',
+          ],
+        };
+        renderCabinetScanResult();
+      }
+    }
+
+    async function analyzeCabinetPhotoWithGemini() {
+      if (!photoState.base64) return;
+      const btn = document.getElementById('btnAnalyzePhoto');
+      const btnText = document.getElementById('btnAnalyzePhotoText');
+      btn.disabled = true;
+      btnText.textContent = 'Foto wird ausgewertet...';
+      hidePhotoError();
+      document.getElementById('scanAppliedBanner').classList.add('hidden');
+
+      const promptText = `Analysiere das Foto eines Zählerschranks für einen PV-Vertriebler. Erkenne Anzahl der Zähler, SLS-Schalter (35 A / 50 A / 63 A), Verdrahtungsquerschnitt (10mm2 oder 16mm2), Überspannungsschutz (ÜSS) und APZ-Feld. Formuliere 2-3 kurze, leicht verständliche Hinweise für das PV-Angebot. Antworte ausschließlich als JSON.`;
+
+      const payload = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: promptText },
+              { inlineData: { mimeType: photoState.mime, data: photoState.base64 } },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            properties: {
+              meterCount: { type: 'INTEGER' },
+              meterMountingType: { type: 'STRING' },
+              reserveMeterSpaces: { type: 'INTEGER' },
+              estimatedWiring: { type: 'STRING', enum: ['10mm2', '16mm2', 'unknown'] },
+              wiringConfidence: { type: 'STRING' },
+              slsPresent: { type: 'STRING', enum: ['vorhanden', 'fehlt', 'unklar'] },
+              slsAmperage: { type: 'STRING', enum: ['35', '50', '63', 'unknown'] },
+              ussPresent: { type: 'STRING', enum: ['vorhanden', 'fehlt', 'unklar'] },
+              apzPresent: { type: 'STRING', enum: ['vorhanden', 'fehlt', 'unklar'] },
+              rfzPresent: { type: 'STRING', enum: ['vorhanden', 'fehlt', 'unklar'] },
+              cabinetConstruction: { type: 'STRING' },
+              freeDinRailSpace: { type: 'STRING' },
+              detectedComponents: { type: 'ARRAY', items: { type: 'STRING' } },
+              hasWpMeterDetected: { type: 'BOOLEAN' },
+              hasSecondUnitDetected: { type: 'BOOLEAN' },
+              vdeFindings: { type: 'ARRAY', items: { type: 'STRING' } },
+            },
+            required: [
+              'meterCount', 'meterMountingType', 'reserveMeterSpaces', 'estimatedWiring',
+              'wiringConfidence', 'slsPresent', 'slsAmperage', 'ussPresent', 'apzPresent',
+              'rfzPresent', 'cabinetConstruction', 'freeDinRailSpace', 'detectedComponents',
+              'hasWpMeterDetected', 'hasSecondUnitDetected', 'vdeFindings'
+            ],
+          },
+        },
+      };
+
+      const apiKey = '';
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      let delay = 1000;
+      for (let attempt = 0; attempt <= 3; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const result = await response.json();
+          const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) throw new Error('Leere Antwort');
+          photoState.scanResult = JSON.parse(rawText);
+          renderCabinetScanResult();
+          btn.disabled = false;
+          btnText.textContent = 'Foto jetzt auswerten';
+          return;
+        } catch (err) {
+          if (attempt === 3) {
+            btn.disabled = false;
+            btnText.textContent = 'Foto jetzt auswerten';
+            showPhotoError('Foto-Auswertung lokal nicht erreichbar. Nutzen Sie „Beispiel-Foto testen“ oder wählen Sie den Zählerschrank-Zustand direkt in Schritt 1.');
+            return;
+          }
+          await new Promise((r) => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    function renderCabinetScanResult() {
+      const r = photoState.scanResult;
+      if (!r) return;
+      document.getElementById('scanPlaceholderBox').classList.add('hidden');
+      document.getElementById('scanResultBox').classList.remove('hidden');
+      document.getElementById('scanConstructionText').textContent = r.cabinetConstruction;
+
+      const wiringText = r.estimatedWiring === '10mm2' ? '10 mm²' : r.estimatedWiring === '16mm2' ? '16 mm²' : 'Unklar';
+      const slsText = r.slsAmperage !== 'unknown' ? `SLS ${r.slsAmperage} A` : `SLS ${r.slsPresent}`;
+      const ussColor = r.ussPresent === 'vorhanden' ? 'text-emerald-700' : r.ussPresent === 'fehlt' ? 'text-rose-700' : 'text-amber-700';
+      const ussLabel = r.ussPresent === 'vorhanden' ? 'Vorhanden ✓' : r.ussPresent === 'fehlt' ? 'Fehlt (anbieten!)' : 'Prüfen';
+
+      document.getElementById('scanBadgesGrid').innerHTML = `
+        <div class="p-2 rounded-xl bg-white border border-slate-200">
+          <div class="text-[10px] font-bold uppercase text-slate-400">Zähler</div>
+          <div class="font-extrabold text-slate-900 mt-0.5">${r.meterCount} Stück</div>
+        </div>
+        <div class="p-2 rounded-xl bg-white border border-slate-200">
+          <div class="text-[10px] font-bold uppercase text-slate-400">Verdrahtung</div>
+          <div class="font-extrabold text-slate-900 mt-0.5">${wiringText} • ${slsText}</div>
+        </div>
+        <div class="p-2 rounded-xl bg-white border border-slate-200">
+          <div class="text-[10px] font-bold uppercase text-slate-400">Überspannungsschutz</div>
+          <div class="font-extrabold mt-0.5 ${ussColor}">${ussLabel}</div>
+        </div>
+        <div class="p-2 rounded-xl bg-white border border-slate-200">
+          <div class="text-[10px] font-bold uppercase text-slate-400">APZ-Feld</div>
+          <div class="font-extrabold text-slate-900 mt-0.5">${r.apzPresent}</div>
+        </div>
+      `;
+
+      document.getElementById('scanFindingsBox').innerHTML = `
+        <div class="font-bold text-amber-900">Wichtig fürs PV-Angebot:</div>
+        <ul class="list-disc pl-4 space-y-1 text-amber-900/90">
+          ${(r.vdeFindings || []).map((f) => `<li>${f}</li>`).join('')}
+        </ul>
+      `;
+    }
+
+    function applyCabinetScanToCalculator() {
+      const r = photoState.scanResult;
+      if (!r) return;
+
+      if (r.estimatedWiring === '10mm2' || r.estimatedWiring === '16mm2') {
+        state.existingWiring = r.estimatedWiring;
+      } else if (r.slsAmperage === '35') {
+        state.existingWiring = '10mm2';
+      } else if (r.slsAmperage === '50' || r.slsAmperage === '63') {
+        state.existingWiring = '16mm2';
+      } else {
+        state.existingWiring = 'unknown';
+      }
+
+      state.detectedSlsAmps = r.slsAmperage || 'unknown';
+      state.hasWpMeter = Boolean(r.hasWpMeterDetected);
+
+      const expectedHouseholdMeters = Math.max(1, (r.meterCount || 1) - (r.hasWpMeterDetected ? 1 : 0));
+      const newMeters = [];
+      for (let i = 0; i < expectedHouseholdMeters; i++) {
+        newMeters.push({
+          id: Date.now() + i,
+          name: i === 0 ? 'Zähler 1 (Haushalt)' : `Zähler ${i + 1} (Wohnung ${i + 1})`,
+          type: 'household',
+          units: 1,
+          mergeSelected: true,
+        });
+      }
+      state.meters = newMeters;
+
+      state.activePreset = 'custom';
+      syncInputsFromState();
+      updateAll();
+      document.getElementById('scanAppliedBanner').classList.remove('hidden');
+    }
+
+    // =========================================================================
+    // PRESETS & INPUT-SYNCHRONISATION
+    // =========================================================================
+    function applyPreset(presetId) {
+      const preset = PRESETS.find((p) => p.id === presetId);
+      if (!preset) return;
+      state = {
+        activePreset: preset.id,
+        detectedSlsAmps: 'unknown',
+        ...JSON.parse(JSON.stringify(preset.data)),
+      };
+      syncInputsFromState();
+      updateAll();
+    }
+
+    function setTargetConcept(concept) {
+      state.targetConcept = concept;
+      state.activePreset = 'custom';
+      updateAll();
+    }
+
+    function syncInputsFromState() {
+      document.getElementById('projectName').value = state.projectName;
+      document.getElementById('existingWiring').value = state.existingWiring;
+      document.getElementById('hasWpMeter').checked = state.hasWpMeter;
+      document.getElementById('hasOldPvFullFeedMeter').checked = state.hasOldPvFullFeedMeter;
+      document.getElementById('annualMeterFeeSaved').value = state.annualMeterFeeSaved;
+      document.getElementById('pvKwp').value = state.pvKwp;
+      document.getElementById('pvInverterKva').value = state.pvInverterKva;
+      document.getElementById('hemsEnabled').checked = state.hemsEnabled;
+      document.getElementById('wpCompressorKw').value = state.wpCompressorKw;
+      document.getElementById('wpBackupHeaterKw').value = state.wpBackupHeaterKw;
+      document.getElementById('wpCompressorKwMain').value = state.wpCompressorKw;
+      document.getElementById('wpBackupHeaterKwMain').value = state.wpBackupHeaterKw;
+      document.getElementById('wpHeaterLocked').checked = state.wpHeaterLocked;
+      document.getElementById('wallboxDimming14a').checked = state.wallboxDimming14a;
+      document.getElementById('chkDle').checked = state.electricWaterHeating;
+      document.getElementById('chkSauna').checked = state.customAppliances.some((a) => a.id === 201);
+
+      // WP Dropdown synchronisieren
+      const wpSel = document.getElementById('simpleWpPreset');
+      if (state.wpCompressorKw <= 0) wpSel.value = 'none';
+      else if (state.wpCompressorKw === 3.6) wpSel.value = 'small';
+      else if (state.wpCompressorKw === 5.0) wpSel.value = 'medium';
+      else if (state.wpCompressorKw === 8.5) wpSel.value = 'large';
+      else wpSel.value = 'custom';
+
+      // Wallbox Dropdown synchronisieren
+      const wbSel = document.getElementById('simpleWbPreset');
+      if (state.wallboxCount <= 0) wbSel.value = '0';
+      else if (state.wallboxCount === 1 && state.wallboxPowerKw === 11) wbSel.value = '1_11';
+      else if (state.wallboxCount === 2 && state.wallboxPowerKw === 11) wbSel.value = '2_11';
+      else if (state.wallboxCount === 1 && state.wallboxPowerKw === 22) wbSel.value = '1_22';
+      else wbSel.value = '3_11';
+    }
+
+    // =========================================================================
+    // KERNBERECHNUNG NACH VDE-AR-N 4100 (Stand 2026-04), DIN 18015 & VNB-REGELN
+    // =========================================================================
+    function computeCalculation() {
+      const safeCosPhi = Math.max(0.8, Math.min(1.0, Number(state.cosPhi) || 0.95));
+
+      const primaryMeter = state.meters[0] || { id: 1, name: 'Hauptzähler', type: 'household', units: 1, mergeSelected: true };
+      const primaryMeterUnits = primaryMeter.type === 'household' ? Math.max(0, Number(primaryMeter.units) || 0) : 0;
+
+      let totalUnitsAllMeters = 0;
+      let totalUnitsMergedMeters = 0;
+      let mergedExtraMetersCount = 0;
+      let commonMetersMergedCount = 0;
+      state.meters.forEach((m, idx) => {
+        const isMerged = idx === 0 || m.mergeSelected !== false;
+        if (m.type === 'household') {
+          const u = Math.max(0, Number(m.units) || 0);
+          totalUnitsAllMeters += u;
+          if (isMerged) {
+            totalUnitsMergedMeters += u;
+            if (idx > 0) mergedExtraMetersCount += 1;
+          }
+        } else if (isMerged) {
+          commonMetersMergedCount += 1;
+          if (idx > 0) mergedExtraMetersCount += 1;
+        }
+      });
+
+      const totalExistingMeters =
+        state.meters.length + (state.hasWpMeter ? 1 : 0) + (state.hasOldPvFullFeedMeter ? 1 : 0);
+
+      // 1. Einspeiserichtung
+      const feedInKva =
+        Math.max(0, Number(state.pvInverterKva) || 0) +
+        Math.max(0, Number(state.batteryAcDischargeKva) || 0);
+      const feedInCurrentA = feedInKva / SQRT3_400V;
+
+      // 2. Haushalt DIN 18015
+      const primaryHouseholdDinKva = calculateHouseholdDinKVA(primaryMeterUnits, state.electricWaterHeating);
+      const commonMetersDinKva = commonMetersMergedCount * 1.5;
+      const mergedHouseholdDinKva =
+        calculateHouseholdDinKVA(totalUnitsMergedMeters, state.electricWaterHeating) + commonMetersDinKva;
+
+      const contShare = Math.max(0, Math.min(100, Number(state.householdContinuousSharePct) || 0)) / 100;
+      const primaryHouseholdContKva = primaryHouseholdDinKva * contShare;
+      const mergedHouseholdContKva = mergedHouseholdDinKva * contShare;
+
+      // 3. Kunden-Verbraucher
+      let customContinuousKw = 0;
+      let customIntermittentKw = 0;
+      state.customAppliances.forEach((app) => {
+        const kw = Math.max(0, Number(app.kw) || 0);
+        const sim = Math.max(0, Math.min(1, Number(app.simultaneity) || 0));
+        const effKw = kw * sim;
+        if (app.mode === 'continuous') customContinuousKw += effKw;
+        else customIntermittentKw += effKw;
+      });
+      const customContinuousKva = customContinuousKw / safeCosPhi;
+      const customIntermittentKva = customIntermittentKw / safeCosPhi;
+
+      // 4. Wärmepumpe
+      const wpTotalKw =
+        Math.max(0, Number(state.wpCompressorKw) || 0) +
+        (state.wpHeaterLocked ? 0 : Math.max(0, Number(state.wpBackupHeaterKw) || 0));
+      const wpKva = wpTotalKw / safeCosPhi;
+      const wpCurrentA = wpKva / SQRT3_400V;
+
+      // 5. Wallbox(en)
+      const wbUnits = Math.max(0, Number(state.wallboxCount) || 0);
+      const wbSingleKw = Math.max(0, Number(state.wallboxPowerKw) || 0);
+      let wallboxEffectiveKw = 0;
+
+      if (wbUnits > 0 && wbSingleKw > 0) {
+        if (state.wallboxDynamicLm || state.hemsEnabled) {
+          wallboxEffectiveKw = state.wallboxDimming14a ? 4.2 : 0;
+        } else if (state.wallboxDimming14a) {
+          if (wbUnits === 1) {
+            wallboxEffectiveKw = 4.2;
+          } else {
+            const gSteuve = wbUnits === 2 ? 0.8 : wbUnits === 3 ? 0.75 : 0.7;
+            wallboxEffectiveKw = Math.max(4.2, wbUnits * 4.2 * gSteuve);
+          }
+        } else {
+          wallboxEffectiveKw = wbUnits * wbSingleKw;
+        }
+      }
+      const wallboxKva = wallboxEffectiveKw / safeCosPhi;
+      const wallboxCurrentA = wallboxKva / SQRT3_400V;
+
+      // 6. Speicher Netzbezug
+      const batChargeEffectiveKw =
+        state.hemsEnabled || state.wallboxDynamicLm ? 0 : Math.max(0, Number(state.batteryAcChargeKw) || 0);
+      const batChargeKva = batChargeEffectiveKw / safeCosPhi;
+
+      // 7. Szenarien A / B / C
+      const sepZ1ConsumptionKva = primaryHouseholdContKva + customContinuousKva + wallboxKva + batChargeKva;
+      const sepZ1ConsumptionA = sepZ1ConsumptionKva / SQRT3_400V;
+      const sepZ1FeedInA = feedInCurrentA;
+      const sepZ1MaxA = Math.max(sepZ1ConsumptionA, sepZ1FeedInA);
+      const sepWpA = wpCurrentA;
+
+      const mergedConsumptionKva = mergedHouseholdContKva + customContinuousKva + wpKva + wallboxKva + batChargeKva;
+      const mergedConsumptionA = mergedConsumptionKva / SQRT3_400V;
+      const mergedFeedInA = feedInCurrentA;
+      const mergedMaxA = Math.max(mergedConsumptionA, mergedFeedInA);
+
+      const cascadeZ1ConsumptionA = mergedConsumptionA;
+      const cascadeZ1FeedInA = feedInCurrentA;
+      const cascadeZ1MaxA = Math.max(cascadeZ1ConsumptionA, cascadeZ1FeedInA);
+
+      const cascadeZ2ConsumptionKva = mergedHouseholdContKva + customContinuousKva + wallboxKva + batChargeKva;
+      const cascadeZ2ConsumptionA = cascadeZ2ConsumptionKva / SQRT3_400V;
+      const cascadeZ2MaxA = Math.max(cascadeZ2ConsumptionA, feedInCurrentA);
+
+      // 8. Aktives Ziel-Szenario
+      let activeConsumptionKva = mergedConsumptionKva;
+      let activeConsumptionA = mergedConsumptionA;
+      let activeFeedInA = mergedFeedInA;
+      let activeMaxA = mergedMaxA;
+      let activeHouseholdContKva = mergedHouseholdContKva;
+      let activeHouseholdDinKva = mergedHouseholdDinKva;
+      let activeWpKva = wpKva;
+
+      if (state.targetConcept === 'separate') {
+        activeConsumptionKva = sepZ1ConsumptionKva;
+        activeConsumptionA = sepZ1ConsumptionA;
+        activeFeedInA = sepZ1FeedInA;
+        activeMaxA = sepZ1MaxA;
+        activeHouseholdContKva = primaryHouseholdContKva;
+        activeHouseholdDinKva = primaryHouseholdDinKva;
+        activeWpKva = 0;
+      } else if (state.targetConcept === 'cascade') {
+        activeConsumptionA = cascadeZ1ConsumptionA;
+        activeFeedInA = cascadeZ1FeedInA;
+        activeMaxA = cascadeZ1MaxA;
+      }
+
+      const governingDirection =
+        activeFeedInA === 0 && activeConsumptionA === 0
+          ? 'none'
+          : activeFeedInA >= activeConsumptionA
+          ? 'feedin'
+          : 'consumption';
+
+      const totalIntermittentPeakA = (activeHouseholdDinKva + customIntermittentKva) / SQRT3_400V;
+      const intermittentExceeds63A = totalIntermittentPeakA > 63.0;
+
+      // 9. Netzbetreiber-Faustregeln (kompakt für Vertrieb)
+      const pvKwpVal = Math.max(0, Number(state.pvKwp) || 0);
+      const vnbRules = [
+        {
+          title: '32 A / 22 kVA (10 mm²)',
+          status: activeMaxA <= 32 ? 'ok' : 'warn',
+          valueText: `${formatNum(activeMaxA, 1)} A / 32 A`,
+          detail: activeMaxA <= 32 ? 'Bestand 10 mm² reicht' : '16 mm² & 50 A SLS nötig',
+        },
+        {
+          title: '44 A / 30,5 kVA (Wandler)',
+          status: activeMaxA <= 44 ? 'ok' : 'alert',
+          valueText: `${formatNum(activeMaxA, 1)} A / 44 A`,
+          detail: activeMaxA <= 44 ? 'Kein Wandler nötig ✓' : 'Wandlerschrank Pflicht!',
+        },
+        {
+          title: '30 kVA WR (zNA-Schutz)',
+          status: feedInKva <= 30 ? 'ok' : 'alert',
+          valueText: `${formatNum(feedInKva, 1)} / 30 kVA`,
+          detail: feedInKva <= 30 ? 'Kein ext. NA-Schutz ✓' : 'Zentraler NA-Schutz nötig!',
+        },
+        {
+          title: '25 kWp PV (§ 9 EEG)',
+          status: pvKwpVal <= 25 ? 'ok' : 'warn',
+          valueText: `${formatNum(pvKwpVal, 1)} / 25 kWp`,
+          detail: pvKwpVal <= 25 ? 'Keine RSE-Pflicht ✓' : 'Fernsteuerung / Steuerbox nötig',
+        },
+      ];
+
+      // 10. Vertriebs-Ampelbewertung
+      let status = 'green';
+      let statusBadge = 'GRÜN: Kein Wandler nötig';
+      let statusTitle = 'Zählerschrank passt! Standard-Installation ohne Wandler';
+      let statusSummary = `Die Belastung liegt bei ${formatNum(activeMaxA, 1)} A (unter 32 A). Der vorhandene Zählerschrank reicht aus – es sind keine teuren Umbauten am Zählerplatz nötig.`;
+      let wiringAction =
+        state.existingWiring === '10mm2'
+          ? 'Vorhandener Zählerschrank (10 mm² / 35 A SLS) bleibt bestehen. Nur Überspannungsschutz & Smart-Meter einplanen.'
+          : 'Vorhandener 16 mm² Zählerschrank bleibt bestehen. Ideal für PV, Wärmepumpe & Wallbox.';
+      let estimatedUpgradeCost = '0 € Zusatzkosten am Zählerfeld';
+
+      if (activeMaxA > 44.0) {
+        status = 'red';
+        statusBadge = 'ROT: Wandlermessung nötig!';
+        statusTitle = 'Achtung: Wandlermessung erforderlich (> 44 A)';
+        statusSummary = `Mit ${formatNum(activeMaxA, 1)} A wird die 44 A-Grenze überschritten. Ohne Anpassung wird ein teurer Wandlermessschrank fällig – prüfen Sie jetzt die Verkaufs-Hebel darunter!`;
+        wiringAction =
+          'Wandlermessschrank im Angebot einkalkulieren – ODER PV auf ≤ 30 kVA / HEMS aktivieren / WP auf eigenem Zähler lassen!';
+        estimatedUpgradeCost = 'ca. 3.500 – 6.500 € Aufpreis';
+      } else if (activeMaxA > 32.0) {
+        status = 'yellow';
+        statusBadge = 'GELB: Kein Wandler (16 mm² nötig)';
+        statusTitle = 'Kein Wandler nötig – aber 16 mm² Verdrahtung & 50 A SLS';
+        statusSummary = `Mit ${formatNum(activeMaxA, 1)} A liegt das Projekt zwischen 32 A und 44 A. Ein Wandler ist NICHT nötig, aber der Zählerplatz braucht 16 mm² Kabel und einen 50 A SLS-Schalter.`;
+        if (state.existingWiring === '10mm2' || state.detectedSlsAmps === '35') {
+          wiringAction =
+            'Im Angebot einplanen: Zählerfeld-Umverdrahtung auf 16 mm² + neuer 50 A SLS-Schalter (statt 35 A).';
+          estimatedUpgradeCost = 'ca. 500 – 1.100 € Aufpreis';
+        } else {
+          wiringAction =
+            'Moderner 16 mm² Zählerschrank vorhanden – kein Wandler und kein großer Umbau nötig!';
+          estimatedUpgradeCost = '0 – 250 € (nur SLS-Check)';
+        }
+      }
+
+      // 11. Wirtschaftlichkeit
+      const metersRemovedCount =
+        state.targetConcept === 'merge_all'
+          ? mergedExtraMetersCount + (state.hasWpMeter ? 1 : 0) + (state.hasOldPvFullFeedMeter ? 1 : 0)
+          : state.targetConcept === 'cascade'
+          ? mergedExtraMetersCount + (state.hasOldPvFullFeedMeter ? 1 : 0)
+          : 0;
+      const totalAnnualSavings = metersRemovedCount * (Number(state.annualMeterFeeSaved) || 0);
+      const tenYearSavings = totalAnnualSavings * 10;
+
+      const mergeTriggersWandler = state.targetConcept !== 'separate' && sepZ1MaxA <= 44.0 && activeMaxA > 44.0;
+      const recommendations = [];
+
+      if (mergeTriggersWandler) {
+        recommendations.push({
+          title: 'Tipp: Zähler NICHT komplett zusammenlegen!',
+          impact: `Spart dem Kunden ca. 3.500 – 6.500 € Wandlerkosten`,
+          detail: `Durch die Zählerzusammenlegung steigt der Strom auf ${formatNum(activeMaxA, 1)} A (> 44 A). Wenn die Wärmepumpe oder 2. WE auf einem eigenen Zähler bleibt (${formatNum(sepZ1MaxA, 1)} A), entfällt die Wandlermessung sofort!`,
+          priority: 'high',
+        });
+      }
+
+      if (feedInKva > 30.0) {
+        recommendations.push({
+          title: 'Tipp: Wechselrichter auf max. 30,0 kVA begrenzen',
+          impact: `Spart Wandlermessung (> 44 A) & zentralen NA-Schutz (> 30 kVA)`,
+          detail: `Auch bei 32–36 kWp Modulen reicht meist ein 30 kVA Wechselrichter (43,3 A). Das spart sofort mehrere tausend Euro an Zählerschrank-Technik.`,
+          priority: 'high',
+        });
+      }
+
+      if (activeMaxA > 32.0) {
+        if (!state.hemsEnabled && !state.wallboxDynamicLm && wbUnits > 0) {
+          const savedKw = wallboxEffectiveKw - (state.wallboxDimming14a ? 4.2 : 0);
+          const reducedA = activeConsumptionA - savedKw / safeCosPhi / SQRT3_400V;
+          const newMaxA = Math.max(activeFeedInA, reducedA);
+          if (savedKw > 0.5 && newMaxA < activeMaxA) {
+            recommendations.push({
+              title: 'Verkaufs-Argument: Energiemanagement (HEMS) mit anbieten',
+              impact: `Senkt Strom von ${formatNum(activeMaxA, 1)} A auf ${formatNum(newMaxA, 1)} A`,
+              detail: `Das HEMS regelt die Wallbox automatisch herunter, wenn Wärmepumpe & Herd gleichzeitig laufen. So passt alles über den normalen Zähler.`,
+              priority: newMaxA <= 44 && activeMaxA > 44 ? 'high' : 'medium',
+            });
+          }
+        }
+
+        if (state.targetConcept !== 'separate' && !state.wpHeaterLocked && state.wpBackupHeaterKw > 0) {
+          const reducedA = activeConsumptionA - state.wpBackupHeaterKw / safeCosPhi / SQRT3_400V;
+          const newMaxA = Math.max(activeFeedInA, reducedA);
+          recommendations.push({
+            title: 'Heizstab der Wärmepumpe verriegeln lassen',
+            impact: `Senkt Belastung auf ${formatNum(newMaxA, 1)} A`,
+            detail: `Wenn der elektrische Heizstab im Normalbetrieb gesperrt ist, wird er beim Zählerschrank nicht mitgerechnet.`,
+            priority: newMaxA <= 44 && activeMaxA > 44 ? 'high' : 'medium',
+          });
+        }
+      }
+
+      return {
+        totalUnitsAllMeters, totalUnitsMergedMeters, mergedExtraMetersCount, primaryMeterUnits, totalExistingMeters,
+        feedInKva, feedInCurrentA,
+        wpTotalKw, wpKva, wpCurrentA,
+        wallboxEffectiveKw, wallboxKva, wallboxCurrentA,
+        sepZ1ConsumptionA, sepZ1FeedInA, sepZ1MaxA, sepWpA,
+        mergedConsumptionA, mergedFeedInA, mergedMaxA,
+        cascadeZ1ConsumptionA, cascadeZ1FeedInA, cascadeZ1MaxA,
+        cascadeZ2ConsumptionA, cascadeZ2FeedInA, cascadeZ2MaxA,
+        activeConsumptionKva, activeConsumptionA, activeFeedInA, activeMaxA,
+        activeHouseholdContKva, activeHouseholdDinKva, activeWpKva,
+        governingDirection, totalIntermittentPeakA, intermittentExceeds63A,
+        vnbRules, status, statusBadge, statusTitle, statusSummary,
+        wiringAction, estimatedUpgradeCost,
+        metersRemovedCount, totalAnnualSavings, tenYearSavings,
+        mergeTriggersWandler, recommendations,
+      };
+    }
+
+    // =========================================================================
+    // UI-AKTUALISIERUNG
+    // =========================================================================
+    function updateAll() {
+      const calc = computeCalculation();
+      lastCalculation = calc;
+
+      // 1. Presets rendern
+      document.getElementById('presetsContainer').innerHTML = PRESETS.map((preset) => {
+        const isSelected = state.activePreset === preset.id;
+        return `
+          <button
+            type="button"
+            onclick="applyPreset('${preset.id}')"
+            class="flex items-center gap-3 p-2.5 rounded-xl text-left border transition-all ${
+              isSelected
+                ? 'bg-sky-950/90 border-sky-400 text-white shadow-sm'
+                : 'bg-slate-800/70 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:border-slate-600'
+            }"
+          >
+            <div class="p-2 rounded-lg shrink-0 ${isSelected ? 'bg-sky-500 text-white' : 'bg-slate-700 text-slate-300'}">
+              <i data-lucide="${preset.icon}" class="w-4 h-4"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-bold truncate">${preset.label}</div>
+              <div class="text-[11px] text-slate-400 truncate">${preset.sub}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      // 2. Einzelne Zähler-Liste & Ziel-Messkonzept Buttons
+      document.getElementById('simpleMetersList').innerHTML = state.meters.map((m, idx) => {
+        const isBase = idx === 0;
+        const isChecked = isBase || m.mergeSelected !== false;
+        return `
+          <div class="p-2 rounded-xl bg-white border ${isChecked ? 'border-sky-300' : 'border-slate-200 opacity-75'} flex items-center gap-2">
+            <input
+              type="checkbox"
+              ${isChecked ? 'checked' : ''}
+              ${isBase ? 'disabled' : ''}
+              onchange="updateSimpleMeter(${m.id}, 'mergeSelected', this.checked)"
+              title="${isBase ? 'Basis-Hauptzähler (immer dabei)' : 'Diesen Zähler mit zusammenlegen'}"
+              class="rounded border-slate-300 text-sky-600 focus:ring-sky-500 shrink-0"
+            />
+            <input
+              type="text"
+              value="${m.name.replace(/"/g, '&quot;')}"
+              oninput="updateSimpleMeter(${m.id}, 'name', this.value)"
+              placeholder="Zählername / Zählernr."
+              class="min-w-0 flex-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 focus:bg-white text-xs font-semibold text-slate-800 outline-none"
+            />
+            <div class="flex items-center gap-1 shrink-0">
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value="${m.units}"
+                oninput="updateSimpleMeter(${m.id}, 'units', parseInt(this.value, 10) || 1)"
+                class="w-12 px-1.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs font-bold text-center text-slate-900 outline-none"
+              />
+              <span class="text-[11px] font-semibold text-slate-500">WE</span>
+            </div>
+            ${
+              !isBase
+                ? `<button type="button" onclick="removeSimpleMeter(${m.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg" title="Zähler entfernen">
+                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                   </button>`
+                : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">Basis</span>`
+            }
+          </div>
+        `;
+      }).join('');
+
+      ['merge_all', 'cascade', 'separate'].forEach((c) => {
+        const btnId = c === 'merge_all' ? 'btnConceptMerge' : c === 'cascade' ? 'btnConceptCascade' : 'btnConceptSeparate';
+        const el = document.getElementById(btnId);
+        if (state.targetConcept === c) {
+          el.className = 'p-2.5 rounded-xl border text-left transition bg-sky-50 border-sky-500 ring-1 ring-sky-500';
+        } else {
+          el.className = 'p-2.5 rounded-xl border text-left transition bg-white border-slate-200 hover:bg-slate-50';
+        }
+      });
+
+      // 3. PV Badge & WP/WB Sichtbarkeit
+      document.getElementById('badgeFeedInAmps').textContent = `${formatNum(calc.activeFeedInA, 1)} A`;
+      document.getElementById('wpHeaterLockRow').style.display = state.wpCompressorKw > 0 ? 'block' : 'none';
+      document.getElementById('wb14aRow').style.display = state.wallboxCount > 0 ? 'block' : 'none';
+
+      // 4. Ergebnis-Ampelkarte
+      const card = document.getElementById('resultTrafficLightCard');
+      const iconBox = document.getElementById('resultIconBox');
+      const badge = document.getElementById('resultStatusBadge');
+
+      if (calc.status === 'green') {
+        card.className = 'rounded-2xl shadow-md border-2 p-6 transition-all bg-emerald-50/95 border-emerald-500 text-emerald-950';
+        iconBox.className = 'p-3.5 rounded-2xl shrink-0 text-white shadow-sm bg-emerald-600';
+        iconBox.innerHTML = '<i data-lucide="check-circle-2" class="w-8 h-8"></i>';
+        badge.className = 'text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-200/80 text-emerald-900';
+      } else if (calc.status === 'yellow') {
+        card.className = 'rounded-2xl shadow-md border-2 p-6 transition-all bg-amber-50/95 border-amber-500 text-amber-950';
+        iconBox.className = 'p-3.5 rounded-2xl shrink-0 text-white shadow-sm bg-amber-500';
+        iconBox.innerHTML = '<i data-lucide="alert-triangle" class="w-8 h-8"></i>';
+        badge.className = 'text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-amber-200/80 text-amber-900';
+      } else {
+        card.className = 'rounded-2xl shadow-md border-2 p-6 transition-all bg-rose-50/95 border-rose-600 text-rose-950';
+        iconBox.className = 'p-3.5 rounded-2xl shrink-0 text-white shadow-sm bg-rose-600';
+        iconBox.innerHTML = '<i data-lucide="x-circle" class="w-8 h-8"></i>';
+        badge.className = 'text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-rose-200/80 text-rose-900';
+      }
+
+      badge.textContent = calc.statusBadge;
+      document.getElementById('resultStatusTitle').textContent = calc.statusTitle;
+      document.getElementById('resultStatusSummary').textContent = calc.statusSummary;
+      document.getElementById('kpiFeedInA').textContent = `${formatNum(calc.activeFeedInA, 1)} A`;
+      document.getElementById('kpiFeedInKva').textContent = `${formatNum(calc.feedInKva, 1)} kVA`;
+      document.getElementById('kpiConsumptionA').textContent = `${formatNum(calc.activeConsumptionA, 1)} A`;
+      document.getElementById('kpiConsumptionKva').textContent = `${formatNum(calc.activeConsumptionKva, 1)} kVA`;
+      document.getElementById('kpiMaxA').textContent = `${formatNum(calc.activeMaxA, 1)} A`;
+      document.getElementById('kpiDirection').textContent =
+        calc.governingDirection === 'feedin' ? 'durch PV' : calc.governingDirection === 'consumption' ? 'durch Bezug' : '–';
+      document.getElementById('resultWiringAction').textContent = calc.wiringAction;
+      document.getElementById('resultUpgradeCost').textContent = calc.estimatedUpgradeCost;
+
+      const intWarn = document.getElementById('intermittentWarningBox');
+      if (calc.intermittentExceeds63A) {
+        intWarn.classList.remove('hidden');
+        document.getElementById('intermittentWarningText').innerHTML = `<strong>Hinweis Durchlauferhitzer:</strong> Kurzzeit-Spitze erreicht ${formatNum(calc.totalIntermittentPeakA, 1)} A – Lastabwurfrelais für Durchlauferhitzer einplanen!`;
+      } else {
+        intWarn.classList.add('hidden');
+      }
+
+      // 5. Zählerzusammenlegungs-Vergleich
+      const badgeSav = document.getElementById('badgeAnnualSavings');
+      const savBox = document.getElementById('savingsSummaryBox');
+      if (calc.metersRemovedCount > 0) {
+        badgeSav.classList.remove('hidden');
+        badgeSav.textContent = `Spart ${formatEuro(calc.totalAnnualSavings)}/Jahr`;
+        savBox.classList.remove('hidden');
+        savBox.innerHTML = `<strong>Verkaufs-Vorteil für den Kunden:</strong> Durch den Wegfall von ${calc.metersRemovedCount} Zähler(n) spart der Kunde ca. <strong>${formatEuro(calc.totalAnnualSavings)} pro Jahr</strong> (<strong>${formatEuro(calc.tenYearSavings)} in 10 Jahren</strong>) an Zähler-Grundgebühren!`;
+      } else {
+        badgeSav.classList.add('hidden');
+        savBox.classList.add('hidden');
+      }
+
+      const ampBadgeClass = (a) => a > 44 ? 'bg-rose-100 text-rose-800' : a > 32 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800';
+      document.getElementById('scenarioComparisonList').innerHTML = `
+        <div onclick="setTargetConcept('merge_all')" class="p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${state.targetConcept === 'merge_all' ? 'bg-sky-50 border-sky-500 ring-1 ring-sky-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}">
+          <div>
+            <div class="font-bold text-slate-900">Alles auf 1 Zähler (Zusammenlegung)</div>
+            <div class="text-[11px] text-slate-500">${calc.mergedMaxA > 44 ? 'Wandler nötig' : calc.mergedMaxA > 32 ? '16 mm² & 50 A SLS' : '10 mm² reicht'}</div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg font-extrabold ${ampBadgeClass(calc.mergedMaxA)}">${formatNum(calc.mergedMaxA, 1)} A</span>
+        </div>
+
+        <div onclick="setTargetConcept('cascade')" class="p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${state.targetConcept === 'cascade' ? 'bg-sky-50 border-sky-500 ring-1 ring-sky-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}">
+          <div>
+            <div class="font-bold text-slate-900">Kaskadenschaltung (WP-Tarif behalten)</div>
+            <div class="text-[11px] text-slate-500">Hauptzähler Z1: ${formatNum(calc.cascadeZ1MaxA, 1)} A | Unterzähler Z2: ${formatNum(calc.cascadeZ2MaxA, 1)} A</div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg font-extrabold ${ampBadgeClass(calc.cascadeZ1MaxA)}">${formatNum(calc.cascadeZ1MaxA, 1)} A</span>
+        </div>
+
+        <div onclick="setTargetConcept('separate')" class="p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${state.targetConcept === 'separate' ? 'bg-sky-50 border-sky-500 ring-1 ring-sky-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}">
+          <div>
+            <div class="font-bold text-slate-900">Zähler getrennt lassen (keine Zusammenlegung)</div>
+            <div class="text-[11px] text-slate-500">Haushalt/PV: ${formatNum(calc.sepZ1MaxA, 1)} A ${state.hasWpMeter ? `| WP-Zähler: ${formatNum(calc.sepWpA, 1)} A` : ''}</div>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg font-extrabold ${ampBadgeClass(calc.sepZ1MaxA)}">${formatNum(calc.sepZ1MaxA, 1)} A</span>
+        </div>
+      `;
+
+      // 6. Netzbetreiber-Faustregeln (kompakt)
+      document.getElementById('vnbRulesList').innerHTML = calc.vnbRules.map((rule) => {
+        const badgeStyles =
+          rule.status === 'ok'
+            ? 'bg-emerald-100 text-emerald-800'
+            : rule.status === 'warn'
+            ? 'bg-amber-100 text-amber-900'
+            : 'bg-rose-100 text-rose-800';
+        return `
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/90">
+            <div class="flex items-center justify-between gap-1">
+              <span class="font-bold text-slate-800">${rule.title}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${badgeStyles}">${rule.valueText}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 mt-0.5">${rule.detail}</div>
+          </div>
+        `;
+      }).join('');
+
+      // 7. Verkaufs-Hebel / Empfehlungen
+      const recContainer = document.getElementById('recommendationsList');
+      if (calc.recommendations.length === 0) {
+        recContainer.innerHTML = `<div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900 font-medium">
+          ✓ Optimal ausgelegt! Es sind keine weiteren Maßnahmen zur Wandler-Vermeidung nötig.
+        </div>`;
+      } else {
+        recContainer.innerHTML = calc.recommendations.map((rec) => `
+          <div class="p-3 rounded-xl border ${rec.priority === 'high' ? 'bg-sky-50 border-sky-200' : 'bg-slate-50 border-slate-200'}">
+            <div class="flex items-start justify-between gap-2">
+              <h4 class="text-xs font-bold text-slate-900">${rec.title}</h4>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${rec.priority === 'high' ? 'bg-sky-600 text-white' : 'bg-slate-200 text-slate-700'}">
+                ${rec.priority === 'high' ? 'Spar-Tipp' : 'Info'}
+              </span>
+            </div>
+            <div class="text-xs font-bold text-sky-700 mt-1">${rec.impact}</div>
+            <p class="text-xs text-slate-600 mt-1 leading-relaxed">${rec.detail}</p>
+          </div>
+        `).join('');
+      }
+
+      // 8. Übergabe-Protokoll an Technik
+      const mergedNames = state.meters
+        .filter((m, idx) => idx === 0 || m.mergeSelected !== false)
+        .map((m) => `${m.name} (${m.units} WE)`)
+        .join(', ');
+      document.getElementById('protocolGrid').innerHTML = `
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Anlage & Zähler</div>
+          <div>PV: <strong>${formatNum(state.pvKwp, 1)} kWp</strong> (${formatNum(state.pvInverterKva, 1)} kVA WR)</div>
+          <div>Zähler (${calc.totalUnitsMergedMeters} WE): <strong>${mergedNames}</strong></div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Verbraucher & Steuerung</div>
+          <div>WP: <strong>${state.wpCompressorKw > 0 ? `${formatNum(state.wpCompressorKw, 1)} kW` : 'Keine'}</strong> | WB: <strong>${state.wallboxCount}× ${state.wallboxPowerKw} kW</strong></div>
+          <div>HEMS: <strong>${state.hemsEnabled ? 'Ja' : 'Nein'}</strong> | § 14a EnWG: <strong>${state.wallboxDimming14a ? 'Ja' : 'Nein'}</strong></div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Ergebnis Zählerschrank</div>
+          <div>Max. Strom: <strong>${formatNum(calc.activeMaxA, 1)} A</strong></div>
+          <div>Bedarf: <strong>${calc.activeMaxA > 44 ? 'Wandlermessung' : calc.activeMaxA > 32 ? '16 mm² / 50 A SLS' : '10 mm² / 35 A SLS'}</strong></div>
+        </div>
+      `;
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function generateReportText() {
+      const calc = lastCalculation || computeCalculation();
+      const mergedNamesList = state.meters
+        .filter((m, idx) => idx === 0 || m.mergeSelected !== false)
+        .map((m) => `${m.name} (${m.units} WE)`)
+        .join(', ');
+      const lines = [
+        `PV-VERTRIEBS-CHECK: ZÄHLERSCHRANK & WANDLERMESSUNG`,
+        `Kunde: ${state.projectName || 'Ohne Namen'} | Datum: ${new Date().toLocaleDateString('de-DE')}`,
+        `--------------------------------------------------------------------`,
+        `Ergebnis: ${calc.statusTitle} (${formatNum(calc.activeMaxA, 1)} A)`,
+        `Angebot / Technik: ${calc.wiringAction}`,
+        `Richtwert Zusatzkosten: ${calc.estimatedUpgradeCost}`,
+        ``,
+        `Eckdaten:`,
+        `- PV: ${formatNum(state.pvKwp, 1)} kWp / WR: ${formatNum(state.pvInverterKva, 1)} kVA`,
+        `- Einbezogene Zähler (${calc.totalUnitsMergedMeters} WE): ${mergedNamesList}${state.hasWpMeter ? ' + WP-Zähler' : ''}${state.hasOldPvFullFeedMeter ? ' + Alt-PV-Zähler' : ''}`,
+        `- Zählerkonzept: ${state.targetConcept === 'merge_all' ? 'Alles auf 1 Zähler' : state.targetConcept === 'cascade' ? 'Kaskade' : 'Getrennte Zähler'}`,
+        `- Wärmepumpe: ${state.wpCompressorKw > 0 ? `${formatNum(state.wpCompressorKw, 1)} kW` : 'Nein'} | Wallboxen: ${state.wallboxCount}× ${state.wallboxPowerKw} kW`,
+        `- HEMS / Energiemanagement: ${state.hemsEnabled ? 'Ja' : 'Nein'} | § 14a EnWG: ${state.wallboxDimming14a ? 'Ja' : 'Nein'}`,
+      ];
+      return lines.join('\n');
+    }
+
+    function copyReportToClipboard() {
+      const text = generateReportText();
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        document.getElementById('btnCopyTopText').textContent = 'Kopiert!';
+        document.getElementById('btnCopyBottomText').textContent = 'Kopiert!';
+        setTimeout(() => {
+          document.getElementById('btnCopyTopText').textContent = 'Protokoll kopieren';
+          document.getElementById('btnCopyBottomText').textContent = 'Für Angebot / Technik kopieren';
+        }, 2500);
+      } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      syncInputsFromState();
+      updateAll();
+    });
+  </script>
+</body>
+</html>
