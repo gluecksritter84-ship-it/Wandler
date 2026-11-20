@@ -112,6 +112,32 @@
       </div>
 
       <div class="p-4 sm:p-5">
+        <!-- API-Key Eingabe (wird nur lokal im Browser gespeichert) -->
+        <div class="mb-4 p-3 rounded-xl bg-slate-100 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="text-xs text-slate-700">
+            <span class="font-bold">Gemini API-Key:</span>
+            <span id="apiKeyStatus" class="text-slate-500">Nicht hinterlegt</span>
+            <span class="text-[11px] text-slate-400 block sm:inline sm:ml-1">(wird nur lokal in diesem Browser gespeichert)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input
+              type="password"
+              id="geminiApiKeyInput"
+              placeholder="AIzaSy..."
+              onchange="saveGeminiApiKey(this.value)"
+              class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono w-44 sm:w-56 outline-none focus:border-sky-500"
+            />
+            <button
+              type="button"
+              onclick="clearGeminiApiKey()"
+              title="Gespeicherten Key löschen"
+              class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-300 text-xs font-semibold transition"
+            >
+              Löschen
+            </button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
           <!-- Upload-Zone & Vorschau -->
           <div class="lg:col-span-5 space-y-3">
@@ -232,7 +258,7 @@
                 <input
                   type="text"
                   id="projectName"
-                  oninput="state.projectName = this.value; updateAll()"
+                  oninput="state.projectName = this.value; updateProtocolOnly()"
                   placeholder="z. B. Familie Weber"
                   class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-sky-500 text-sm font-medium outline-none"
                 />
@@ -262,10 +288,10 @@
                 <button
                   type="button"
                   onclick="addSimpleMeter()"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-xs transition shrink-0"
+                  class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white text-xs font-bold shadow-xs transition shrink-0 cursor-pointer"
                 >
                   <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-                  <span>+ Zähler</span>
+                  <span>Zähler hinzufügen</span>
                 </button>
               </div>
 
@@ -682,6 +708,8 @@
     // DATENMODELLE & VEREINFACHTE VERTRIEBS-LOGIK
     // =========================================================================
     const SQRT3_400V = Math.sqrt(3) * 0.4; // 0.692820323 kVA / A
+    const API_KEY_STORAGE_NAME = 'pv_check_gemini_api_key';
+    let meterIdCounter = 100;
 
     const PRESETS = [
       {
@@ -841,6 +869,37 @@
     let lastCalculation = null;
 
     // =========================================================================
+    // API-KEY VERWALTUNG (LOKAL IM BROWSER)
+    // =========================================================================
+    function saveGeminiApiKey(key) {
+      const trimmed = (key || '').trim();
+      if (trimmed) {
+        localStorage.setItem(API_KEY_STORAGE_NAME, trimmed);
+      } else {
+        localStorage.removeItem(API_KEY_STORAGE_NAME);
+      }
+      updateApiKeyUi();
+    }
+
+    function clearGeminiApiKey() {
+      localStorage.removeItem(API_KEY_STORAGE_NAME);
+      const input = document.getElementById('geminiApiKeyInput');
+      if (input) input.value = '';
+      updateApiKeyUi();
+    }
+
+    function updateApiKeyUi() {
+      const savedKey = localStorage.getItem(API_KEY_STORAGE_NAME) || '';
+      const input = document.getElementById('geminiApiKeyInput');
+      const status = document.getElementById('apiKeyStatus');
+      if (input && savedKey) input.value = savedKey;
+      if (status) {
+        status.textContent = savedKey ? 'Lokal gespeichert ✓' : 'Nicht hinterlegt';
+        status.className = savedKey ? 'text-emerald-700 font-semibold' : 'text-slate-500';
+      }
+    }
+
+    // =========================================================================
     // HILFSFUNKTIONEN
     // =========================================================================
     function formatNum(num, decimals = 1) {
@@ -867,9 +926,10 @@
 
     // Einzelne Zähler verwalten & für Zusammenlegung auswählen
     function addSimpleMeter() {
+      meterIdCounter += 1;
       const nextNum = state.meters.length + 1;
       state.meters.push({
-        id: Date.now(),
+        id: meterIdCounter,
         name: `Zähler ${nextNum} (Wohnung ${nextNum})`,
         type: 'household',
         units: 1,
@@ -886,7 +946,11 @@
         return { ...m, [field]: value };
       });
       state.activePreset = 'custom';
-      updateAll();
+      if (field === 'name') {
+        updateProtocolOnly();
+      } else {
+        updateAll();
+      }
     }
 
     function removeSimpleMeter(id) {
@@ -925,7 +989,6 @@
     function handleSimplePvChange(val) {
       const kwp = Math.max(0, parseFloat(val) || 0);
       state.pvKwp = kwp;
-      // Setzt WR automatisch auf 90 % bis max 30 kVA (typische Vertriebspraxis)
       const autoKva = kwp <= 15 ? kwp : Math.min(30, Math.round(kwp * 0.9 * 10) / 10);
       state.pvInverterKva = autoKva;
       document.getElementById('pvInverterKva').value = autoKva;
@@ -1167,10 +1230,17 @@
       if (!photoState.base64) return;
       const btn = document.getElementById('btnAnalyzePhoto');
       const btnText = document.getElementById('btnAnalyzePhotoText');
-      btn.disabled = true;
-      btnText.textContent = 'Foto wird ausgewertet...';
       hidePhotoError();
       document.getElementById('scanAppliedBanner').classList.add('hidden');
+
+      const apiKey = (localStorage.getItem(API_KEY_STORAGE_NAME) || '').trim();
+      if (!apiKey) {
+        showPhotoError('Bitte zuerst oben Ihren Gemini API-Key eingeben (wird lokal im Browser gespeichert).');
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Foto wird ausgewertet...';
 
       const promptText = `Analysiere das Foto eines Zählerschranks für einen PV-Vertriebler. Erkenne Anzahl der Zähler, SLS-Schalter (35 A / 50 A / 63 A), Verdrahtungsquerschnitt (10mm2 oder 16mm2), Überspannungsschutz (ÜSS) und APZ-Feld. Formuliere 2-3 kurze, leicht verständliche Hinweise für das PV-Angebot. Antworte ausschließlich als JSON.`;
 
@@ -1216,31 +1286,34 @@
         },
       };
 
-      const apiKey = '';
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
       let delay = 1000;
-      for (let attempt = 0; attempt <= 3; attempt++) {
+      for (let attempt = 0; attempt <= 2; attempt++) {
         try {
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            const apiMsg = errBody?.error?.message || `HTTP ${response.status}`;
+            throw new Error(apiMsg);
+          }
           const result = await response.json();
           const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (!rawText) throw new Error('Leere Antwort');
+          if (!rawText) throw new Error('Leere Antwort von der API');
           photoState.scanResult = JSON.parse(rawText);
           renderCabinetScanResult();
           btn.disabled = false;
           btnText.textContent = 'Foto jetzt auswerten';
           return;
         } catch (err) {
-          if (attempt === 3) {
+          if (attempt === 2) {
             btn.disabled = false;
             btnText.textContent = 'Foto jetzt auswerten';
-            showPhotoError('Foto-Auswertung lokal nicht erreichbar. Nutzen Sie „Beispiel-Foto testen“ oder wählen Sie den Zählerschrank-Zustand direkt in Schritt 1.');
+            showPhotoError(`Foto-Auswertung fehlgeschlagen (${err.message}). Bitte API-Key prüfen oder „Beispiel-Foto testen“ nutzen.`);
             return;
           }
           await new Promise((r) => setTimeout(r, delay));
@@ -1308,8 +1381,9 @@
       const expectedHouseholdMeters = Math.max(1, (r.meterCount || 1) - (r.hasWpMeterDetected ? 1 : 0));
       const newMeters = [];
       for (let i = 0; i < expectedHouseholdMeters; i++) {
+        meterIdCounter += 1;
         newMeters.push({
-          id: Date.now() + i,
+          id: meterIdCounter,
           name: i === 0 ? 'Zähler 1 (Haushalt)' : `Zähler ${i + 1} (Wohnung ${i + 1})`,
           type: 'household',
           units: 1,
@@ -1363,7 +1437,6 @@
       document.getElementById('chkDle').checked = state.electricWaterHeating;
       document.getElementById('chkSauna').checked = state.customAppliances.some((a) => a.id === 201);
 
-      // WP Dropdown synchronisieren
       const wpSel = document.getElementById('simpleWpPreset');
       if (state.wpCompressorKw <= 0) wpSel.value = 'none';
       else if (state.wpCompressorKw === 3.6) wpSel.value = 'small';
@@ -1371,7 +1444,6 @@
       else if (state.wpCompressorKw === 8.5) wpSel.value = 'large';
       else wpSel.value = 'custom';
 
-      // Wallbox Dropdown synchronisieren
       const wbSel = document.getElementById('simpleWbPreset');
       if (state.wallboxCount <= 0) wbSel.value = '0';
       else if (state.wallboxCount === 1 && state.wallboxPowerKw === 11) wbSel.value = '1_11';
@@ -1381,7 +1453,7 @@
     }
 
     // =========================================================================
-    // KERNBERECHNUNG NACH VDE-AR-N 4100 (Stand 2026-04), DIN 18015 & VNB-REGELN
+    // KERNBERECHNUNG NACH VDE-AR-N 4100, DIN 18015 & VNB-REGELN
     // =========================================================================
     function computeCalculation() {
       const safeCosPhi = Math.max(0.8, Math.min(1.0, Number(state.cosPhi) || 0.95));
@@ -1527,7 +1599,7 @@
       const totalIntermittentPeakA = (activeHouseholdDinKva + customIntermittentKva) / SQRT3_400V;
       const intermittentExceeds63A = totalIntermittentPeakA > 63.0;
 
-      // 9. Netzbetreiber-Faustregeln (kompakt für Vertrieb)
+      // 9. Netzbetreiber-Faustregeln
       const pvKwpVal = Math.max(0, Number(state.pvKwp) || 0);
       const vnbRules = [
         {
@@ -1668,6 +1740,31 @@
       };
     }
 
+    function updateProtocolOnly() {
+      const calc = lastCalculation || computeCalculation();
+      const mergedNames = state.meters
+        .filter((m, idx) => idx === 0 || m.mergeSelected !== false)
+        .map((m) => `${m.name} (${m.units} WE)`)
+        .join(', ');
+      document.getElementById('protocolGrid').innerHTML = `
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Anlage & Zähler</div>
+          <div>PV: <strong>${formatNum(state.pvKwp, 1)} kWp</strong> (${formatNum(state.pvInverterKva, 1)} kVA WR)</div>
+          <div>Zähler (${calc.totalUnitsMergedMeters} WE): <strong>${mergedNames}</strong></div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Verbraucher & Steuerung</div>
+          <div>WP: <strong>${state.wpCompressorKw > 0 ? `${formatNum(state.wpCompressorKw, 1)} kW` : 'Keine'}</strong> | WB: <strong>${state.wallboxCount}× ${state.wallboxPowerKw} kW</strong></div>
+          <div>HEMS: <strong>${state.hemsEnabled ? 'Ja' : 'Nein'}</strong> | § 14a EnWG: <strong>${state.wallboxDimming14a ? 'Ja' : 'Nein'}</strong></div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+          <div class="font-bold text-slate-800">Ergebnis Zählerschrank</div>
+          <div>Max. Strom: <strong>${formatNum(calc.activeMaxA, 1)} A</strong></div>
+          <div>Bedarf: <strong>${calc.activeMaxA > 44 ? 'Wandlermessung' : calc.activeMaxA > 32 ? '16 mm² / 50 A SLS' : '10 mm² / 35 A SLS'}</strong></div>
+        </div>
+      `;
+    }
+
     // =========================================================================
     // UI-AKTUALISIERUNG
     // =========================================================================
@@ -1733,7 +1830,7 @@
             </div>
             ${
               !isBase
-                ? `<button type="button" onclick="removeSimpleMeter(${m.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg" title="Zähler entfernen">
+                ? `<button type="button" onclick="removeSimpleMeter(${m.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer" title="Zähler entfernen">
                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                    </button>`
                 : `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">Basis</span>`
@@ -1840,7 +1937,7 @@
         </div>
       `;
 
-      // 6. Netzbetreiber-Faustregeln (kompakt)
+      // 6. Netzbetreiber-Faustregeln
       document.getElementById('vnbRulesList').innerHTML = calc.vnbRules.map((rule) => {
         const badgeStyles =
           rule.status === 'ok'
@@ -1881,27 +1978,7 @@
       }
 
       // 8. Übergabe-Protokoll an Technik
-      const mergedNames = state.meters
-        .filter((m, idx) => idx === 0 || m.mergeSelected !== false)
-        .map((m) => `${m.name} (${m.units} WE)`)
-        .join(', ');
-      document.getElementById('protocolGrid').innerHTML = `
-        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-          <div class="font-bold text-slate-800">Anlage & Zähler</div>
-          <div>PV: <strong>${formatNum(state.pvKwp, 1)} kWp</strong> (${formatNum(state.pvInverterKva, 1)} kVA WR)</div>
-          <div>Zähler (${calc.totalUnitsMergedMeters} WE): <strong>${mergedNames}</strong></div>
-        </div>
-        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-          <div class="font-bold text-slate-800">Verbraucher & Steuerung</div>
-          <div>WP: <strong>${state.wpCompressorKw > 0 ? `${formatNum(state.wpCompressorKw, 1)} kW` : 'Keine'}</strong> | WB: <strong>${state.wallboxCount}× ${state.wallboxPowerKw} kW</strong></div>
-          <div>HEMS: <strong>${state.hemsEnabled ? 'Ja' : 'Nein'}</strong> | § 14a EnWG: <strong>${state.wallboxDimming14a ? 'Ja' : 'Nein'}</strong></div>
-        </div>
-        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-          <div class="font-bold text-slate-800">Ergebnis Zählerschrank</div>
-          <div>Max. Strom: <strong>${formatNum(calc.activeMaxA, 1)} A</strong></div>
-          <div>Bedarf: <strong>${calc.activeMaxA > 44 ? 'Wandlermessung' : calc.activeMaxA > 32 ? '16 mm² / 50 A SLS' : '10 mm² / 35 A SLS'}</strong></div>
-        </div>
-      `;
+      updateProtocolOnly();
 
       if (window.lucide) {
         window.lucide.createIcons();
@@ -1929,7 +2006,8 @@
         `- Wärmepumpe: ${state.wpCompressorKw > 0 ? `${formatNum(state.wpCompressorKw, 1)} kW` : 'Nein'} | Wallboxen: ${state.wallboxCount}× ${state.wallboxPowerKw} kW`,
         `- HEMS / Energiemanagement: ${state.hemsEnabled ? 'Ja' : 'Nein'} | § 14a EnWG: ${state.wallboxDimming14a ? 'Ja' : 'Nein'}`,
       ];
-      return lines.join('\n');
+      return lines.join('
+');
     }
 
     function copyReportToClipboard() {
@@ -1953,6 +2031,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+      updateApiKeyUi();
       syncInputsFromState();
       updateAll();
     });
